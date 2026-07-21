@@ -28,12 +28,11 @@ When you run `earsay listen --port 3009`, EarSay starts a local web server. Othe
 
 ## Features
 
-- **Continuous transcription** — listens until you stop it. No push-to-talk, no time limits.
+- **Stream to stdout** — transcribed text appears in your terminal by default
 - **HTTP API** — query text, set checkpoints, control pause/resume/stop from any program
 - **Real-time events** — subscribe via SSE (Server-Sent Events) and get text as it arrives
 - **Checkpoints** — split transcripts into chunks (like bookmarks in a document)
 - **File persistence** — optionally save everything to a file
-- **Standalone mode** — stream directly to stdout, no server needed
 
 ## Installation
 
@@ -130,12 +129,20 @@ The first time EarSay accesses your microphone, macOS will show a permission dia
 
 Tip: if you want `earsay listen` to start instantly, run `earsay warmup` first.
 
-### Server mode (API + file)
+### Default: stream to stdout
 
-Start EarSay as a background server. It will listen on port 3009 and append all text to a file:
+Just run `earsay listen` with no arguments. Transcribed text appears in your terminal as you speak. Press Ctrl-C to stop.
 
 ```bash
-earsay listen --port 3009 --file ~/transcript.txt
+earsay listen
+```
+
+### Server mode (HTTP API)
+
+Add `--port` to expose an HTTP API that other programs can query. Text still appears on stdout, plus it's available via the API:
+
+```bash
+earsay listen --port 3009
 ```
 
 In another terminal, interact with it:
@@ -159,21 +166,23 @@ earsay resume      # start listening again
 earsay stop        # shut down completely
 ```
 
-### Standalone mode (terminal only)
+### Save to file
 
-Stream transcription directly to your terminal. No server, no API. Great for quick dictation:
+Use `--file` to append all transcribed text to a file. Works with or without `--port`:
 
 ```bash
+# stdout + file
 earsay listen --file ~/notes.txt
-```
 
-Text appears in the terminal as you speak and is also saved to `~/notes.txt`. Press Ctrl-C to stop.
+# server + file
+earsay listen --port 3009 --file ~/transcript.txt
+```
 
 ## Commands
 
 | Command | What it does | Example |
 |---------|-------------|---------|
-| `earsay listen` | Start transcribing. Add `--port` for API access, `--file` to save to disk. | `earsay listen --port 3009 --file ~/transcript.txt` |
+| `earsay listen` | Start transcribing to stdout. Add `--port` for HTTP API, `--file` to save to disk. | `earsay listen`, `earsay listen --port 3009 --file ~/transcript.txt` |
 | `earsay stop` | Shut down the server. | `earsay stop` |
 | `earsay pause` | Release the microphone (server stays running). | `earsay pause` |
 | `earsay resume` | Start listening again after a pause. | `earsay resume` |

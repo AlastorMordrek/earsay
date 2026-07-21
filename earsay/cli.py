@@ -93,15 +93,11 @@ def warmup(download_model):
 def listen(port, file_path, model):
     """Start continuous transcription.
 
-    Heavy dependencies are imported here on first use. Run 'earsay
-    warmup' beforehand to pre-load them and avoid the cold-start delay.
+    By default, prints transcribed text to stdout. Use --port to expose
+    an HTTP API, --file to save to disk, or both. Heavy dependencies are
+    imported here on first use. Run 'earsay warmup' beforehand to pre-load
+    them and avoid the cold-start delay.
     """
-    if not port and not file_path:
-        print("Error: at least one of --port or --file is required.", file=sys.stderr)
-        print("  earsay listen --port 3009            # server mode", file=sys.stderr)
-        print("  earsay listen --file transcript.txt  # standalone mode", file=sys.stderr)
-        sys.exit(1)
-
     from earsay.transcriber import Transcriber
     from earsay.server import run_server
 
