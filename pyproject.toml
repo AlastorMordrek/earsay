@@ -1,0 +1,28 @@
+[project]
+name = "earsay"
+version = "0.1.0"
+description = "Continuous voice-to-text terminal utility with HTTP API and streaming subscriptions"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Silas"},
+]
+dependencies = [
+    "faster-whisper>=1.0",
+    "sounddevice>=0.4",
+    "numpy>=1.24",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "click>=8.1",
+    "pydantic>=2.6",
+]
+
+[project.scripts]
+earsay = "earsay.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["earsay*"]
