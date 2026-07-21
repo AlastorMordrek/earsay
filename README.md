@@ -108,11 +108,25 @@ Or use a different port:
 earsay listen --port 3008
 ```
 
+**"earsay --help takes 15-30 seconds to respond"?**
+
+The speech recognition engine (faster-whisper, onnxruntime) has large compiled libraries that take time to load on first use. EarSay uses lazy imports — help text and control commands like `stop` and `pause` are instant. The slow import only happens when you run `earsay listen` for the first time.
+
+To pre-load everything at a controlled time (e.g. in a setup script):
+
+```bash
+earsay warmup               # pre-load libraries (15-30s once)
+earsay warmup --download-model  # also download the whisper model
+earsay listen --port 3009   # starts instantly
+```
+
 **"Permission denied" on macOS?**
 
 The first time EarSay accesses your microphone, macOS will show a permission dialog. You must click "Allow." If you accidentally denied it, go to System Settings → Privacy & Security → Microphone and enable it for your terminal app.
 
 ## Quick Start
+
+Tip: if you want `earsay listen` to start instantly, run `earsay warmup` first.
 
 ### Server mode (API + file)
 
@@ -167,6 +181,7 @@ Text appears in the terminal as you speak and is also saved to `~/notes.txt`. Pr
 | `earsay new-text` | Print text since the last checkpoint, plus its potential index. | `earsay new-text` |
 | `earsay subscribe` | Open a live stream of text events. Fires when N new characters arrive or after a silence timeout. | `earsay subscribe --chars 30 --timeout 3000` |
 | `earsay un-subscribe` | Cancel a subscription by its ticket ID. | `earsay un-subscribe a1b2c3d4-...` |
+| `earsay warmup` | Pre-load all heavy dependencies. Use in scripts so `earsay listen` starts instantly. Add `--download-model` to also download the whisper model. | `earsay warmup` |
 
 ## HTTP API
 

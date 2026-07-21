@@ -3,22 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import signal
-import sys
 import time
-from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
-import uvicorn
-
 from earsay.models import (
-    Checkpoint,
-    NewText,
     PidFile,
-    Status,
-    SubscriptionEvent,
     SubscriptionRequest,
 )
 from earsay.text_manager import TextManager
@@ -56,10 +45,23 @@ def _read_pid() -> Optional[PidFile]:
         return None
 
 
+def warmup() -> None:
+    """Pre-load all heavy server dependencies.
+
+    Import fastapi and uvicorn so the first ``earsay listen`` call
+    starts without the cold-import delay.
+    """
+    from fastapi import FastAPI  # noqa: F401
+    import uvicorn  # noqa: F401
+
+
 def create_app(
     text_manager: TextManager,
     transcriber: Transcriber,
-) -> FastAPI:
+):  # -> FastAPI  (lazy-imported, return type omitted for speed)
+    from fastapi import FastAPI, HTTPException, Query
+    from fastapi.responses import StreamingResponse
+    from contextlib import asynccontextmanager
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -180,6 +182,8 @@ def create_app(
 
 
 def run_server(port: int, text_manager: TextManager, transcriber: Transcriber) -> None:
+    import uvicorn
+
     _write_pid(port)
     app = create_app(text_manager, transcriber)
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")

@@ -6,6 +6,8 @@ import sys
 import urllib.request
 import urllib.error
 
+import click
+from earsay.text_manager import TextManager
 
 PID_DIR = os.path.expanduser("~/.earsay")
 PID_FILE = os.path.join(PID_DIR, "pid")
@@ -50,15 +52,38 @@ def _api(method: str, path: str, port: int, query: str = "") -> dict:
         sys.exit(1)
 
 
-import click
-from earsay.transcriber import Transcriber
-from earsay.text_manager import TextManager
-from earsay.server import run_server, _write_pid, _remove_pid
-
-
 @click.group()
 def main():
     """EarSay — continuous voice-to-text terminal utility."""
+
+
+@main.command()
+@click.option("--download-model", is_flag=True, default=False, help="Also download the whisper model")
+def warmup(download_model):
+    """Pre-load all heavy dependencies so 'earsay listen' starts instantly.
+
+    Useful in scripts or CI where you want to control when the 15-30
+    second cold-import delay happens. Without this, the first call to
+    'earsay listen' will incur the delay automatically.
+
+    Example:
+
+        earsay warmup && earsay listen --port 3009
+    """
+    print("Loading speech recognition engine...", file=sys.stderr)
+    from earsay.transcriber import warmup as _transcriber_warmup
+    _transcriber_warmup()
+    print("Loading server stack...", file=sys.stderr)
+    from earsay.server import warmup as _server_warmup
+    _server_warmup()
+
+    if download_model:
+        print("Downloading whisper model (tiny.en, ~75MB)...", file=sys.stderr)
+        from faster_whisper import WhisperModel
+        WhisperModel("tiny.en", device="cpu", compute_type="int8", download_root=None)
+        print("Model downloaded.", file=sys.stderr)
+
+    print("All dependencies loaded. earsay listen will start instantly.", file=sys.stderr)
 
 
 @main.command()
@@ -66,13 +91,19 @@ def main():
 @click.option("--file", "-f", "file_path", type=click.Path(), default=None, help="Append transcript to file")
 @click.option("--model", "-m", default="tiny.en", help="Whisper model name (default: tiny.en)")
 def listen(port, file_path, model):
-    """Start continuous transcription."""
+    """Start continuous transcription.
 
+    Heavy dependencies are imported here on first use. Run 'earsay
+    warmup' beforehand to pre-load them and avoid the cold-start delay.
+    """
     if not port and not file_path:
         print("Error: at least one of --port or --file is required.", file=sys.stderr)
         print("  earsay listen --port 3009            # server mode", file=sys.stderr)
         print("  earsay listen --file transcript.txt  # standalone mode", file=sys.stderr)
         sys.exit(1)
+
+    from earsay.transcriber import Transcriber
+    from earsay.server import run_server
 
     def on_text(text: str):
         if port:

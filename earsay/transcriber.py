@@ -7,29 +7,29 @@ from typing import Optional
 
 import numpy as np
 
-try:
-    import sounddevice as sd
-    HAS_SOUNDDEVICE = True
-except OSError:
-    HAS_SOUNDDEVICE = False
-
-
-try:
-    from faster_whisper import WhisperModel
-    HAS_FASTER_WHISPER = True
-except ImportError:
-    HAS_FASTER_WHISPER = False
-
-
 SAMPLE_RATE = 16000
-BLOCK_SIZE = 512  # ~32ms at 16kHz
-SILENCE_THRESHOLD = 0.015  # RMS energy threshold for silence
-SILENCE_BLOCKS = 40  # ~1.3s of silence before utterance end
-PRE_SPEECH_BUFFER_BLOCKS = 10  # keep 320ms before speech start
+BLOCK_SIZE = 512
+SILENCE_THRESHOLD = 0.015
+SILENCE_BLOCKS = 40
+PRE_SPEECH_BUFFER_BLOCKS = 10
 
 
 def _rms(block: np.ndarray) -> float:
     return float(np.sqrt(np.mean(block.astype(np.float64) ** 2)))
+
+
+def warmup() -> None:
+    """Pre-load all heavy dependencies to avoid cold-start delays later.
+
+    Call this in scripts or CI before running ``earsay listen`` so that
+    the actual transcription starts instantly. Without it, the first
+    invocation of listen incurs a 15-30 second import cost on macOS.
+    """
+    import sounddevice as sd
+    from faster_whisper import WhisperModel
+
+    _ = sd.query_devices()
+    _ = WhisperModel
 
 
 class Transcriber:
@@ -40,27 +40,18 @@ class Transcriber:
         device: str = "auto",
         compute_type: str = "int8",
     ):
-        if not HAS_SOUNDDEVICE:
-            raise RuntimeError(
-                "sounddevice not available. Install with: pip install sounddevice"
-            )
-        if not HAS_FASTER_WHISPER:
-            raise RuntimeError(
-                "faster-whisper not available. Install with: pip install faster-whisper"
-            )
-
         self._on_text = on_text
         self._model_name = model_name
-        self._model: Optional[WhisperModel] = None
+        self._model = None
         self._device = device
         self._compute_type = compute_type
 
-        self._stream: Optional[sd.InputStream] = None
+        self._stream = None
         self._running = False
         self._paused = False
         self._pause_cond = threading.Condition()
 
-        self._ring: collections.deque = collections.deque(maxlen=600)  # ~20s
+        self._ring: collections.deque = collections.deque(maxlen=600)
         self._in_speech = False
         self._silence_count = 0
         self._speech_buffer: list[np.ndarray] = []
@@ -71,6 +62,8 @@ class Transcriber:
         if self._running:
             return
         if self._model is None:
+            from faster_whisper import WhisperModel
+
             self._model = WhisperModel(
                 self._model_name,
                 device=self._device,
@@ -106,6 +99,8 @@ class Transcriber:
         return self._paused
 
     def _audio_loop(self) -> None:
+        import sounddevice as sd
+
         def callback(indata, frames, time_info, status):
             if status:
                 return
