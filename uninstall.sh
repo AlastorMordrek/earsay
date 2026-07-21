@@ -7,6 +7,32 @@ cd "$SCRIPT_DIR"
 echo "=== EarSay Uninstaller ==="
 echo ""
 
+STOPPED=0
+
+if [ -f ~/.earsay/pid ]; then
+    PORT=$(python3 -c "import json; print(json.load(open('$HOME/.earsay/pid')).get('port',0))" 2>/dev/null || echo 0)
+    PID=$(python3 -c "import json; print(json.load(open('$HOME/.earsay/pid')).get('pid',0))" 2>/dev/null || echo 0)
+
+    if [ "$PID" -gt 0 ] && kill -0 "$PID" 2>/dev/null; then
+        echo "EarSay is running (pid $PID). Stopping..."
+
+        if [ "$PORT" -gt 0 ]; then
+            curl -s -X POST "http://127.0.0.1:$PORT/stop" 2>/dev/null || true
+            sleep 1
+        fi
+
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "Graceful stop didn't work. Force-killing..."
+            kill "$PID" 2>/dev/null || true
+            sleep 1
+            kill -9 "$PID" 2>/dev/null || true
+        fi
+
+        STOPPED=1
+        echo "Stopped."
+    fi
+fi
+
 REMOVED=0
 
 if [ -d ".venv" ]; then
@@ -44,7 +70,7 @@ for profile in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.prof
     fi
 done
 
-if [ "$REMOVED" -eq 0 ]; then
+if [ "$STOPPED" -eq 0 ] && [ "$REMOVED" -eq 0 ]; then
     echo "Nothing to uninstall. EarSay is not installed here."
 else
     echo ""
