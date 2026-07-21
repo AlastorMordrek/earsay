@@ -22,7 +22,7 @@ if [ -f ~/.earsay/pid ]; then
         fi
 
         if kill -0 "$PID" 2>/dev/null; then
-            echo "Graceful stop didn't work. Force-killing..."
+            echo "Graceful stop failed. Force-killing..."
             kill "$PID" 2>/dev/null || true
             sleep 1
             kill -9 "$PID" 2>/dev/null || true
@@ -53,20 +53,19 @@ if [ -L ~/.local/bin/earsay ]; then
     REMOVED=1
 fi
 
-VENV_BIN="$SCRIPT_DIR/.venv/bin"
-EXPORT_LINE="export PATH=\"$VENV_BIN:\$PATH\""
-
 for profile in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
-    if [ -f "$profile" ] && grep -qF "$EXPORT_LINE" "$profile" 2>/dev/null; then
-        echo "Removing PATH entry from $profile..."
-        if [[ "$(uname -s)" == "Darwin" ]]; then
-            sed -i '' "/# Added by earsay installer/d" "$profile"
-            sed -i '' "\|$EXPORT_LINE|d" "$profile"
-        else
-            sed -i "/# Added by earsay installer/d" "$profile"
-            sed -i "\|$EXPORT_LINE|d" "$profile"
+    if [ -f "$profile" ]; then
+        if grep -q "# Added by earsay installer" "$profile" 2>/dev/null; then
+            echo "Removing installer entries from $profile..."
+            if [[ "$(uname -s)" == "Darwin" ]]; then
+                sed -i '' '/# Added by earsay installer/d' "$profile"
+                sed -i '' '/^$/N;/^\n$/d' "$profile"
+            else
+                sed -i '/# Added by earsay installer/d' "$profile"
+                sed -i '/^$/N;/^\n$/d' "$profile"
+            fi
+            REMOVED=1
         fi
-        REMOVED=1
     fi
 done
 
@@ -76,6 +75,7 @@ else
     echo ""
     echo "EarSay has been removed."
     echo ""
-    echo "Note: if you added earsay to your PATH in this terminal session,"
-    echo "the 'earsay' command will stop working when you open a new terminal."
+    echo "Note: the 'earsay' command will stop working when you open"
+    echo "a new terminal. If you used pipx, uninstall with:"
+    echo "  pipx uninstall earsay"
 fi

@@ -62,7 +62,10 @@ The install script will:
 1. Find a compatible Python version (3.10, 3.11, or 3.12) on your system
 2. Create a virtual environment (a sandboxed workspace)
 3. Install EarSay and all its dependencies
-4. Offer to add `earsay` to your PATH so you can run it from anywhere
+4. Ask whether to install `earsay` globally (default: yes)
+
+Answering yes creates a symlink in `~/.local/bin` and ensures that
+folder is on your PATH so `earsay` works from any directory.
 
 To uninstall: `./uninstall.sh`
 
