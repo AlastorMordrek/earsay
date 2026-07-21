@@ -65,6 +65,8 @@ The install script will:
 3. Install EarSay and all its dependencies
 4. Offer to add `earsay` to your PATH so you can run it from anywhere
 
+To uninstall: `./uninstall.sh`
+
 On first run, faster-whisper downloads the speech recognition model automatically (~75MB for `tiny.en`).
 
 ### Requirements

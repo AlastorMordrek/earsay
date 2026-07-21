@@ -211,5 +211,5 @@ echo "      $( [ "${choice:-N}" = "p" ] || [ "${choice:-N}" = "P" ] || [ "${choi
 echo ""
 echo "--------------------------------------------------"
 echo "To uninstall:"
-echo "  rm -rf $SCRIPT_DIR/.venv"
+echo "  ./uninstall.sh"
 echo "--------------------------------------------------"
