@@ -15,12 +15,12 @@ EarSay listens to your microphone, transcribes speech to text using [faster-whis
 
 ## Installation
 
-### Recommended: pipx
+### Option 1: pipx (recommended, no clone needed)
 
 [pipx](https://pipx.pypa.io/) installs earsay in an isolated environment with a compatible Python version automatically:
 
 ```bash
-pipx install earsay
+pipx install git+https://github.com/AlastorMordrek/earsay.git
 ```
 
 After install, `earsay` is available from any terminal:
@@ -29,15 +29,15 @@ After install, `earsay` is available from any terminal:
 earsay --help
 ```
 
-### Alternative: pip + venv
-
-If you prefer a manual virtual environment with Python 3.10, 3.11, or 3.12:
+### Option 2: clone and run install script
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate   # on Windows: .venv\Scripts\activate
-pip install earsay
+git clone https://github.com/AlastorMordrek/earsay.git
+cd earsay
+./install.sh
 ```
+
+The install script detects your Python version, creates a virtual environment, and offers to add `earsay` to your PATH.
 
 On first run, faster-whisper downloads the model automatically (~75MB for `tiny.en`).
 
@@ -62,7 +62,7 @@ If it is 3.13 or newer, install a compatible Python version first. The easiest w
 ```bash
 pyenv install 3.12
 pyenv local 3.12
-pipx install earsay
+pipx install git+https://github.com/AlastorMordrek/earsay.git
 ```
 
 Or specify the Python version directly with pipx:
