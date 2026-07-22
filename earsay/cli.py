@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import sys
@@ -10,6 +11,22 @@ import click
 from earsay.text_manager import TextManager
 
 PID_DIR = os.path.expanduser("~/.earsay")
+
+
+def _append_to_file(path: str, text: str) -> None:
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        try:
+            os.write(fd, text.encode())
+            os.fsync(fd)
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+    except Exception:
+        pass
+
+
 PID_FILE = os.path.join(PID_DIR, "pid")
 
 
@@ -101,28 +118,16 @@ def listen(port, file_path, model):
     from earsay.transcriber import Transcriber
     from earsay.server import run_server
 
+    tm = TextManager()
+
     def on_text(text: str):
         if port:
             tm.append(text)
         else:
             sys.stdout.write(text)
             sys.stdout.flush()
-
-    tm = TextManager(on_append=on_text if port else None)
-
-    if file_path:
-        fh = open(file_path, "a")
-        def file_on_text(text: str):
-            fh.write(text)
-            fh.flush()
-        if port:
-            orig = tm._on_append
-            def combined(text: str):
-                orig(text)
-                file_on_text(text)
-            tm._on_append = combined
-        else:
-            tm._on_append = file_on_text
+        if file_path:
+            _append_to_file(file_path, text)
 
     transcriber = Transcriber(on_text=on_text, model_name=model)
     transcriber.start()

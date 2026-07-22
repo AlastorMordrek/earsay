@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import sys
 import threading
 import time
 from typing import Optional
@@ -9,9 +10,11 @@ import numpy as np
 
 SAMPLE_RATE = 16000
 BLOCK_SIZE = 512
-SILENCE_THRESHOLD = 0.015
-SILENCE_BLOCKS = 40
+DEFAULT_SILENCE_THRESHOLD = 0.015
+SILENCE_BLOCKS = 25
 PRE_SPEECH_BUFFER_BLOCKS = 10
+CALIBRATION_SECONDS = 2.0
+MAX_UTTERANCE_SECONDS = 5.0
 
 
 def _rms(block: np.ndarray) -> float:
@@ -55,6 +58,15 @@ class Transcriber:
         self._in_speech = False
         self._silence_count = 0
         self._speech_buffer: list[np.ndarray] = []
+
+        self._calibrated = False
+        self._threshold = DEFAULT_SILENCE_THRESHOLD
+        self._calibration_samples: list[float] = []
+        self._calibration_blocks = int(
+            SAMPLE_RATE * CALIBRATION_SECONDS / BLOCK_SIZE
+        )
+
+        self._utterance_start: float = 0.0
 
         self._thread: Optional[threading.Thread] = None
 
@@ -122,16 +134,37 @@ class Transcriber:
                     self._pause_cond.wait(timeout=0.5)
                 continue
 
-            if len(self._ring) < BLOCK_SIZE:
+            if len(self._ring) < 1:
                 time.sleep(0.01)
                 continue
 
             block = self._ring.popleft()
             energy = _rms(block)
 
+            if not self._calibrated:
+                self._calibration_samples.append(energy)
+                if len(self._calibration_samples) >= self._calibration_blocks:
+                    median_noise = float(np.median(self._calibration_samples))
+                    self._threshold = max(median_noise * 3.0, 0.005)
+                    self._calibrated = True
+                    print(
+                        f"[earsay] noise floor: {median_noise:.6f}  "
+                        f"threshold: {self._threshold:.6f}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                else:
+                    continue
+
+            if self._in_speech and (
+                time.time() - self._utterance_start > MAX_UTTERANCE_SECONDS
+            ):
+                self._end_utterance()
+                continue
+
             if self._in_speech:
                 self._speech_buffer.append(block)
-                if energy < SILENCE_THRESHOLD:
+                if energy < self._threshold:
                     self._silence_count += 1
                     if self._silence_count >= SILENCE_BLOCKS:
                         self._end_utterance()
@@ -139,8 +172,9 @@ class Transcriber:
                     self._silence_count = 0
             else:
                 self._speech_buffer.append(block)
-                if energy >= SILENCE_THRESHOLD:
+                if energy >= self._threshold:
                     self._in_speech = True
+                    self._utterance_start = time.time()
                     self._silence_count = 0
                 elif len(self._speech_buffer) > PRE_SPEECH_BUFFER_BLOCKS:
                     self._speech_buffer.pop(0)
