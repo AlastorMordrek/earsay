@@ -12,6 +12,19 @@ EarSay is a voice dictation tool that runs in your terminal. It listens to your 
 
 EarSay is built for developers who want to add voice input to their tools, especially AI coding agents like OpenCode.
 
+### OpenCode Integration
+
+[opencode-earsay](https://github.com/AlastorMordrek/opencode-earsay) is an OpenCode plugin
+that wires EarSay into your coding agent. Install it, restart, and speak.
+The plugin auto-installs EarSay, manages the server lifecycle, and exposes
+11 voice tools the LLM uses to analyze speech semantically in real time.
+
+```bash
+# In your opencode.jsonc:
+{ "plugin": ["opencode-earsay"] }
+# Restart opencode — done.
+```
+
 ## How it works
 
 ```
