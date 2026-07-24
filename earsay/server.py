@@ -72,7 +72,7 @@ def create_app(
 
     async def _timeout_loop():
         while transcriber.is_paused is not None:
-            if text_manager.subscription_count() > 0:
+            if not transcriber.is_paused and text_manager.subscription_count() > 0:
                 text_manager.fire_timeout_subscriptions()
             await asyncio.sleep(0.1)
 
