@@ -19,7 +19,7 @@ cd earsay
 ./install.sh
 ```
 
-That's it. Answer **Y** when asked about global install, then open a new terminal:
+Answer **Y** when asked about global install, then open a new terminal:
 
 ```bash
 earsay listen --port 3009
@@ -30,7 +30,8 @@ earsay listen --port 3009
 ```bash
 earsay listen                    # transcribe to stdout
 earsay listen --port 3009        # start HTTP API server
-earsay warmup                    # pre-load dependencies (first run)
+earsay listen --model large      # use a larger whisper model (better accuracy, slower)
+earsay warmup                    # pre-load dependencies so listen starts instantly
 ```
 
 ### From another terminal:
@@ -38,20 +39,18 @@ earsay warmup                    # pre-load dependencies (first run)
 ```bash
 earsay text                      # see everything said so far
 earsay checkpoint --at 301       # mark a position as "read"
+earsay re-checkpoint --at 150    # correct the last checkpoint to a new position
 earsay new-text                  # get text since last checkpoint
 earsay pause                     # release microphone
 earsay resume                    # start listening again
+earsay subscribe --chars 30 --timeout 3000 --fullchunk
+earsay un-subscribe <ticket>     # cancel a subscription
 earsay stop                      # shut down
 ```
 
 ### OpenCode Integration
 
-[opencode-earsay](https://github.com/AlastorMordrek/opencode-earsay) wires EarSay into your OpenCode agent. Install the plugin, restart, speak — the LLM analyzes speech autonomously.
-
-```jsonc
-// ~/.config/opencode/opencode.jsonc
-{ "plugin": ["opencode-earsay"] }
-```
+[opencode-earsay](https://github.com/AlastorMordrek/opencode-earsay) wires EarSay into your OpenCode agent. See that repo's README for install instructions. After setup, just speak — the LLM analyzes speech autonomously.
 
 ## How it works
 
@@ -69,15 +68,17 @@ Your voice → Microphone → EarSay (faster-whisper) → Transcribed text
 
 | Command | What it does |
 |---------|-------------|
-| `earsay listen` | Start transcribing (add `--port` for HTTP API, `--file` for file output) |
+| `earsay listen` | Start transcribing (`--port` for HTTP API, `--file` for file output, `--model` for whisper model) |
 | `earsay stop` | Shut down the server |
 | `earsay pause` | Release the microphone (server stays running) |
 | `earsay resume` | Start listening again |
 | `earsay text` | Print all transcribed text |
 | `earsay checkpoint --at N` | Mark a position as read |
+| `earsay re-checkpoint --at N` | Correct the last checkpoint to a new position |
 | `earsay new-text` | Get text since last checkpoint |
-| `earsay subscribe --chars N --timeout MS` | Open a live SSE stream |
-| `earsay warmup` | Pre-load all heavy dependencies |
+| `earsay subscribe --chars N --timeout MS --fullchunk` | Open a live SSE stream |
+| `earsay un-subscribe TICKET` | Cancel a subscription by ticket ID |
+| `earsay warmup` | Pre-load dependencies so the first `listen` starts without delay |
 
 ## HTTP API
 
@@ -88,11 +89,22 @@ When running in server mode (`--port`), EarSay exposes these endpoints on `127.0
 | `GET` | `/text` | All transcribed text |
 | `GET` | `/new-text` | Text since last checkpoint |
 | `POST` | `/checkpoint?at=N` | Create a checkpoint |
+| `POST` | `/re-checkpoint?at=N` | Correct the last checkpoint to a new position |
 | `POST` | `/pause` | Release microphone |
 | `POST` | `/resume` | Reopen microphone |
-| `POST` | `/stop` | Shut down |
+| `POST` | `/stop` | Shut down (kills the server process) |
 | `GET` | `/status` | Server status and statistics |
 | `POST` | `/subscribe?chars=N&timeout=MS&fullchunk=BOOL` | SSE event stream |
+| `DELETE` | `/subscribe/{ticket}` | Cancel a subscription |
+
+## Uninstall
+
+```bash
+cd earsay
+./uninstall.sh
+```
+
+The uninstaller stops the server, removes the virtual environment and uv download, deletes `~/.earsay/` and the `~/.local/bin/earsay` symlink, and cleans up profile PATH additions. See also the [opencode-earsay plugin](https://github.com/AlastorMordrek/opencode-earsay) if earsay was installed by it.
 
 ## Requirements
 
