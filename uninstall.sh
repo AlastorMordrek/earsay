@@ -83,7 +83,7 @@ else
     echo ""
     echo "Note: the 'earsay' command will stop working when you open"
     echo "a new terminal. If the installer downloaded a portable"
-    echo "Python 3.12 via uv, the files are at:"
-    echo "  ~/.local/share/uv/python/cpython-3.12*"
-    echo "Remove them if no other tool on your system uses uv:"
+    echo "Python 3.12 via uv and no other tool on your system uses it,"
+    echo "remove with:"
+    echo "  rm -rf ~/.local/share/uv/python/cpython-3.12*"
 fi
