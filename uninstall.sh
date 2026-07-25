@@ -86,4 +86,11 @@ else
     echo "Python 3.12 via uv and no other tool on your system uses it,"
     echo "remove with:"
     echo "  rm -rf ~/.local/share/uv/python/cpython-3.12*"
+    echo ""
+    echo "If earsay was installed via uv tool (common when using the"
+    echo "opencode-earsay plugin), also remove its tool data:"
+    echo "  rm -rf ~/.local/share/uv/tools/earsay*"
+    echo ""
+    echo "Before removing ~/.earsay/, run 'uv tool uninstall earsay'"
+    echo "and 'uv python uninstall 3.12' if uv is in ~/.earsay/bin/uv."
 fi
