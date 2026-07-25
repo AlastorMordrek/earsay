@@ -127,6 +127,9 @@ def create_app(
     async def stop():
         transcriber.stop()
         _remove_pid()
+        server = app.state.server
+        if server:
+            server.should_exit = True
         return {"status": "stopped"}
 
     @app.get("/status")
@@ -188,5 +191,6 @@ def run_server(port: int, text_manager: TextManager, transcriber: Transcriber) -
     app = create_app(text_manager, transcriber)
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
     server = uvicorn.Server(config)
+    app.state.server = server
     server.run()
     _remove_pid()
