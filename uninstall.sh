@@ -47,6 +47,12 @@ if [ -d ~/.earsay ]; then
     REMOVED=1
 fi
 
+if [ -d "$SCRIPT_DIR/.earsay-uv" ]; then
+    echo "Removing uv download directory..."
+    rm -rf "$SCRIPT_DIR/.earsay-uv"
+    REMOVED=1
+fi
+
 if [ -L ~/.local/bin/earsay ]; then
     echo "Removing symlink (~/.local/bin/earsay)..."
     rm -f ~/.local/bin/earsay
@@ -76,6 +82,8 @@ else
     echo "EarSay has been removed."
     echo ""
     echo "Note: the 'earsay' command will stop working when you open"
-    echo "a new terminal. If you used pipx, uninstall with:"
-    echo "  pipx uninstall earsay"
+    echo "a new terminal. If the installer downloaded a portable"
+    echo "Python 3.12 via uv, the files are at:"
+    echo "  ~/.local/share/uv/python/cpython-3.12*"
+    echo "Remove them if no other tool on your system uses uv:"
 fi
