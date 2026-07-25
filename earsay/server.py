@@ -64,13 +64,6 @@ def create_app(
     from fastapi.responses import StreamingResponse
     from contextlib import asynccontextmanager
 
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        yield
-        transcriber.stop()
-
-    app = FastAPI(lifespan=lifespan)
-
     async def _timeout_loop():
         tick = 0
         while transcriber.is_paused is not None:
@@ -81,10 +74,14 @@ def create_app(
                 print(f"[earsay] timeout loop alive subs={text_manager.subscription_count()}", file=sys.stderr, flush=True)
             await asyncio.sleep(0.1)
 
-    @app.on_event("startup")
-    async def startup():
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
         text_manager._loop = asyncio.get_running_loop()
         asyncio.create_task(_timeout_loop())
+        yield
+        transcriber.stop()
+
+    app = FastAPI(lifespan=lifespan)
 
     @app.get("/text")
     async def get_text():
