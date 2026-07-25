@@ -10,6 +10,8 @@ HOSTNAME="$(hostname -s 2>/dev/null || echo "your-computer")"
 echo "=== EarSay Installer ==="
 echo ""
 
+# ── find or install a compatible Python (3.10–3.12) ──────────────────────
+
 PYTHON=""
 for cmd in python3.12 python3.11 python3.10 python3; do
     if command -v "$cmd" &>/dev/null; then
@@ -23,24 +25,70 @@ for cmd in python3.12 python3.11 python3.10 python3; do
 done
 
 if [ -z "$PYTHON" ]; then
-    echo "Error: Python 3.10, 3.11, or 3.12 required but none found."
+    echo "No compatible Python (3.10–3.12) found on this system."
+    echo "Current: $(python3 --version 2>/dev/null || echo 'no python3')"
     echo ""
-    echo "Install a compatible version:"
-    echo "  pyenv install 3.12 && pyenv local 3.12"
-    echo "  then re-run: ./install.sh"
-    exit 1
+    echo "Downloading a portable Python via uv ..."
+
+    # Detect platform for uv binary
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64)  UV_TARGET="x86_64" ;;
+        arm64|aarch64) UV_TARGET="aarch64" ;;
+        *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+    esac
+    case "$OS" in
+        Darwin) UV_TARGET="${UV_TARGET}-apple-darwin" ;;
+        Linux)  UV_TARGET="${UV_TARGET}-unknown-linux-gnu" ;;
+        *) echo "Unsupported OS: $OS"; exit 1 ;;
+    esac
+
+    UV_DIR="$SCRIPT_DIR/.earsay-uv"
+    UV_BIN="$UV_DIR/uv"
+    mkdir -p "$UV_DIR"
+
+    echo "  Downloading uv ..."
+    curl -sL "https://github.com/astral-sh/uv/releases/latest/download/uv-${UV_TARGET}.tar.gz" \
+      -o "$UV_DIR/uv.tar.gz"
+    tar -xzf "$UV_DIR/uv.tar.gz" -C "$UV_DIR"
+    # uv tarball extracts into a subdir named uv-<target>
+    EXTRACTED=$(ls "$UV_DIR" | grep -E '^uv-' | head -1)
+    if [ -n "$EXTRACTED" ]; then
+        mv "$UV_DIR/$EXTRACTED/uv" "$UV_BIN"
+        rm -rf "$UV_DIR/$EXTRACTED"
+    fi
+    rm -f "$UV_DIR/uv.tar.gz"
+    chmod +x "$UV_BIN"
+
+    echo "  Installing Python 3.12 via uv ..."
+    "$UV_BIN" python install 3.12 2>&1 | sed 's/^/  /'
+
+    PYTHON=$("$UV_BIN" python find 3.12 2>/dev/null)
+    if [ -z "$PYTHON" ]; then
+        echo "Error: uv failed to install Python 3.12."
+        exit 1
+    fi
+
+    echo "  Using $($PYTHON --version) at $PYTHON"
+    echo ""
 fi
 
-echo "Detected $OS. Using $PYTHON ($($PYTHON --version))"
+echo "Using $($PYTHON --version)"
 
-if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    $PYTHON -m venv .venv
+# ── install earsay ────────────────────────────────────────────────────────
+
+if [ -d ".venv" ]; then
+    echo "Removing old virtual environment..."
+    rm -rf .venv
 fi
 
+echo "Creating virtual environment..."
+"$PYTHON" -m venv .venv
+
+INSTALLER=".venv/bin/pip"
 echo "Installing earsay and its dependencies..."
 echo "  (faster-whisper, sounddevice, FastAPI, and others)"
-.venv/bin/pip install -e . --quiet 2>&1 | tail -1
+$INSTALLER install -e . --quiet 2>&1 | tail -1
 
 BIN_PATH="$SCRIPT_DIR/.venv/bin/earsay"
 
@@ -67,7 +115,7 @@ echo ""
 echo "    [Y] Yes — install globally (recommended, default)"
 echo "        Result: earsay --help     (works everywhere)"
 echo ""
-echo "    [N] No — I'll manage it myself"
+echo "    [N] No — I'll manage it yourself"
 echo "        Result: $BIN_PATH --help  (full path required)"
 echo ""
 
@@ -136,6 +184,9 @@ case "$choice" in
         CMD=".venv/bin/earsay"
         ;;
 esac
+
+# ── clean up uv artifacts ─────────────────────────────────────────────────
+rm -rf "$SCRIPT_DIR/.earsay-uv" 2>/dev/null
 
 echo ""
 echo "--------------------------------------------------"
