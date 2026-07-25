@@ -113,11 +113,13 @@ class TextManager:
             text = self._buffer[last_pos:]
             return NewText(potential_index=len(self._checkpoints), text=text)
 
-    def set_checkpoint(self, at: int) -> Checkpoint:
+    def set_checkpoint(self, at: Optional[int] = None) -> Checkpoint:
         with self._lock:
-            if at <= 0:
+            if at is None:
+                at = len(self._buffer)
+            elif at <= 0:
                 raise ValueError("Checkpoint position must be positive")
-            if self._checkpoints:
+            elif self._checkpoints:
                 last_pos = self._checkpoints[-1][1]
                 if at <= last_pos:
                     raise ValueError(

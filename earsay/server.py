@@ -93,16 +93,12 @@ def create_app(
         return {"potential_index": result.potential_index, "text": result.text}
 
     @app.post("/checkpoint")
-    async def set_checkpoint(at: int = Query(..., description="Character position")):
+    async def set_checkpoint(at: Optional[int] = Query(None, description="Character position (omit for end of buffer)")):
         try:
             cp = text_manager.set_checkpoint(at)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        clamped = at > len(text_manager.all_text())
-        resp = {"index": cp.index, "text": cp.text}
-        if clamped:
-            return resp, 200, {"X-Clamped": "true"}
-        return resp
+        return {"index": cp.index, "text": cp.text}
 
     @app.post("/re-checkpoint")
     async def re_checkpoint(at: int = Query(..., description="New character position")):
