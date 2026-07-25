@@ -29,6 +29,7 @@ class TextManager:
         self._subscriptions: dict[str, Subscription] = {}
         self._started_at = time.monotonic()
         self._on_append = on_append
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     def append(self, text: str) -> None:
         if not text:
@@ -99,12 +100,8 @@ class TextManager:
             pass
 
     def _push_event_threadsafe(self, sub: Subscription, event: SubscriptionEvent) -> None:
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.call_soon_threadsafe(sub.event_queue.put_nowait, event)
-        except RuntimeError:
-            pass
+        if self._loop is not None and self._loop.is_running():
+            self._loop.call_soon_threadsafe(sub.event_queue.put_nowait, event)
 
     def all_text(self) -> str:
         with self._lock:

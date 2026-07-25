@@ -83,6 +83,7 @@ def create_app(
 
     @app.on_event("startup")
     async def startup():
+        text_manager._loop = asyncio.get_running_loop()
         asyncio.create_task(_timeout_loop())
 
     @app.get("/text")
