@@ -47,6 +47,12 @@ if [ -d ~/.earsay ]; then
     REMOVED=1
 fi
 
+if [ -f /tmp/earsay-plugin.log ]; then
+    echo "Removing plugin log (/tmp/earsay-plugin.log)..."
+    rm -f /tmp/earsay-plugin.log
+    REMOVED=1
+fi
+
 if [ -d "$SCRIPT_DIR/.earsay-uv" ]; then
     echo "Removing uv download directory..."
     rm -rf "$SCRIPT_DIR/.earsay-uv"
