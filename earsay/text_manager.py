@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import threading
 import time
 import uuid
@@ -41,7 +42,7 @@ class TextManager:
         for sub in subscriptions:
             trigger = self._should_trigger(sub)
             if trigger:
-                self._push_event(sub, trigger)
+                self._push_event_threadsafe(sub, trigger)
 
     def _subscriptions_snapshot(self) -> list[Subscription]:
         with self._lock:
@@ -81,19 +82,28 @@ class TextManager:
                     sub.last_sent_pos = len(self._buffer)
                     sub.last_activity = now
                 idx = len(self._checkpoints)
-                self._push_event(
-                    sub,
-                    SubscriptionEvent(
-                        ticket=sub.ticket,
-                        potential_index=idx,
-                        text=text,
-                    ),
+                event = SubscriptionEvent(
+                    ticket=sub.ticket,
+                    potential_index=idx,
+                    text=text,
                 )
+                # only log non-empty events to avoid noise
+                if text:
+                    print(f"[earsay] timeout push text={text!r}", file=sys.stderr, flush=True)
+                self._push_event(sub, event)
 
     def _push_event(self, sub: Subscription, event: SubscriptionEvent) -> None:
         try:
             sub.event_queue.put_nowait(event)
         except asyncio.QueueFull:
+            pass
+
+    def _push_event_threadsafe(self, sub: Subscription, event: SubscriptionEvent) -> None:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.call_soon_threadsafe(sub.event_queue.put_nowait, event)
+        except RuntimeError:
             pass
 
     def all_text(self) -> str:

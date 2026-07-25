@@ -186,6 +186,11 @@ class Transcriber:
             except Exception:
                 pass
 
+    @staticmethod
+    def _is_noise_only(text: str) -> bool:
+        text = text.strip().replace(".", "").replace("?", "").replace("!", "").replace(",", "").replace(" ", "").replace("\u2026", "")
+        return len(text) == 0
+
     def _end_utterance(self) -> None:
         if not self._speech_buffer:
             self._in_speech = False
@@ -204,7 +209,7 @@ class Transcriber:
 
         try:
             text = self._transcribe(audio)
-            if text:
+            if text and not self._is_noise_only(text):
                 self._on_text(text)
         except Exception:
             pass
@@ -214,7 +219,7 @@ class Transcriber:
             audio,
             language="en",
             beam_size=5,
-            vad_filter=False,
+            vad_filter=True,
         )
         parts = []
         for segment in segments:

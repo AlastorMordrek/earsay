@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 import time
 from typing import Optional
 
@@ -71,9 +72,13 @@ def create_app(
     app = FastAPI(lifespan=lifespan)
 
     async def _timeout_loop():
+        tick = 0
         while transcriber.is_paused is not None:
             if not transcriber.is_paused and text_manager.subscription_count() > 0:
                 text_manager.fire_timeout_subscriptions()
+            tick += 1
+            if tick % 500 == 0:
+                print(f"[earsay] timeout loop alive subs={text_manager.subscription_count()}", file=sys.stderr, flush=True)
             await asyncio.sleep(0.1)
 
     @app.on_event("startup")
