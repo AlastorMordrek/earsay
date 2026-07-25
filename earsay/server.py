@@ -26,6 +26,7 @@ def _write_pid(port: int) -> None:
         started_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     )
     import dataclasses
+
     with open(PID_FILE, "w") as f:
         json.dump(dataclasses.asdict(data), f)
 
@@ -71,7 +72,11 @@ def create_app(
                 text_manager.fire_timeout_subscriptions()
             tick += 1
             if tick % 500 == 0:
-                print(f"[earsay] timeout loop alive subs={text_manager.subscription_count()}", file=sys.stderr, flush=True)
+                print(
+                    f"[earsay] timeout loop alive subs={text_manager.subscription_count()}",
+                    file=sys.stderr,
+                    flush=True,
+                )
             await asyncio.sleep(0.1)
 
     @asynccontextmanager
@@ -93,7 +98,11 @@ def create_app(
         return {"potential_index": result.potential_index, "text": result.text}
 
     @app.post("/checkpoint")
-    async def set_checkpoint(at: Optional[int] = Query(None, description="Character position (omit for end of buffer)")):
+    async def set_checkpoint(
+        at: Optional[int] = Query(
+            None, description="Character position (omit for end of buffer)"
+        ),
+    ):
         try:
             cp = text_manager.set_checkpoint(at)
         except ValueError as e:
@@ -140,7 +149,7 @@ def create_app(
     @app.post("/subscribe")
     async def subscribe(
         chars: int = Query(30, description="Characters threshold"),
-        timeout: int = Query(3000, description="Silence timeout in ms"),
+        timeout: int = Query(5000, description="Silence timeout in ms"),
         fullchunk: bool = Query(False, description="Send full chunk instead of delta"),
     ):
         req = SubscriptionRequest(chars=chars, timeout_ms=timeout, fullchunk=fullchunk)
@@ -153,10 +162,13 @@ def create_app(
                     event = await sub.event_queue.get()
                     if event is None:
                         break
-                    payload = json.dumps({
-                        "potential_index": event.potential_index,
-                        "text": event.text,
-                    })
+                    payload = json.dumps(
+                        {
+                            "potential_index": event.potential_index,
+                            "text": event.text,
+                            "trigger": event.trigger,
+                        }
+                    )
                     yield f"data: {payload}\n\n"
             except asyncio.CancelledError:
                 pass

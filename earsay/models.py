@@ -23,6 +23,7 @@ class SubscriptionEvent:
     ticket: str
     potential_index: int
     text: str
+    trigger: str  # "chars" | "timeout"
 
 
 @dataclass

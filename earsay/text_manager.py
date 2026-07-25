@@ -41,35 +41,36 @@ class TextManager:
 
         subscriptions = self._subscriptions_snapshot()
         for sub in subscriptions:
-            trigger = self._should_trigger(sub)
-            if trigger:
-                self._push_event_threadsafe(sub, trigger)
+            for event in self._should_trigger(sub):
+                self._push_event_threadsafe(sub, event)
 
     def _subscriptions_snapshot(self) -> list[Subscription]:
         with self._lock:
             return list(self._subscriptions.values())
 
-    def _should_trigger(self, sub: Subscription) -> Optional[SubscriptionEvent]:
+    def _should_trigger(self, sub: Subscription) -> list[SubscriptionEvent]:
+        events: list[SubscriptionEvent] = []
         with self._lock:
-            new_chars = len(self._buffer) - sub.last_sent_pos
-            if new_chars >= sub.chars_threshold:
-                sub.last_activity = time.monotonic()
-                text = self._extract_text(sub)
-                sub.last_sent_pos = len(self._buffer)
-                idx = len(self._checkpoints)
-                return SubscriptionEvent(
-                    ticket=sub.ticket,
-                    potential_index=idx,
-                    text=text,
+            sub.last_activity = time.monotonic()
+            idx = len(self._checkpoints)
+            while True:
+                new_chars = len(self._buffer) - sub.last_sent_pos
+                if new_chars < sub.chars_threshold:
+                    break
+                emit_len = min(new_chars, sub.chars_threshold)
+                emit_text = self._buffer[
+                    sub.last_sent_pos : sub.last_sent_pos + emit_len
+                ]
+                sub.last_sent_pos += len(emit_text)
+                events.append(
+                    SubscriptionEvent(
+                        ticket=sub.ticket,
+                        potential_index=idx,
+                        text=emit_text,
+                        trigger="chars",
+                    )
                 )
-        return None
-
-    def _extract_text(self, sub: Subscription) -> str:
-        if sub.fullchunk:
-            last_pos = self._last_checkpoint_position()
-            return self._buffer[last_pos:]
-        else:
-            return self._buffer[sub.last_sent_pos :]
+        return events
 
     def fire_timeout_subscriptions(self) -> None:
         now = time.monotonic()
@@ -87,10 +88,15 @@ class TextManager:
                     ticket=sub.ticket,
                     potential_index=idx,
                     text=text,
+                    trigger="timeout",
                 )
                 # only log non-empty events to avoid noise
                 if text:
-                    print(f"[earsay] timeout push text={text!r}", file=sys.stderr, flush=True)
+                    print(
+                        f"[earsay] timeout push text={text!r}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                 self._push_event(sub, event)
 
     def _push_event(self, sub: Subscription, event: SubscriptionEvent) -> None:
@@ -99,7 +105,9 @@ class TextManager:
         except asyncio.QueueFull:
             pass
 
-    def _push_event_threadsafe(self, sub: Subscription, event: SubscriptionEvent) -> None:
+    def _push_event_threadsafe(
+        self, sub: Subscription, event: SubscriptionEvent
+    ) -> None:
         if self._loop is not None and self._loop.is_running():
             self._loop.call_soon_threadsafe(sub.event_queue.put_nowait, event)
 

@@ -121,10 +121,13 @@ When running with `--port`, these endpoints are available on `127.0.0.1`:
 | `DELETE` | `/subscribe/{ticket}` | Cancel a subscription |
 
 The `/subscribe` endpoint streams Server-Sent Events. Each `data:` line is a
-JSON object with `text` (newly transcribed characters) and `potential_index`.
-The `chars` parameter fires an event when N+ new characters accumulate. The
-`timeout` parameter fires an empty event after MS ms of silence. Set
-`fullchunk=true` to send the full potential chunk instead of just the delta.
+JSON object with `text` (newly transcribed characters), `potential_index`, and
+`trigger` (`"chars"` for threshold-based events or `"timeout"` for
+silence-triggered events). Large utterances are split into multiple
+`chars_threshold`-sized events for reliable batch-injection workflows.
+The `chars` parameter fires events of up to N characters each. The `timeout`
+parameter (default 5000 ms) fires after MS ms of silence. Set `fullchunk=true`
+to send the full potential chunk instead of deltas.
 
 ---
 

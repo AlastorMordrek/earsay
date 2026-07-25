@@ -11,10 +11,10 @@ import numpy as np
 SAMPLE_RATE = 16000
 BLOCK_SIZE = 512
 DEFAULT_SILENCE_THRESHOLD = 0.015
-SILENCE_BLOCKS = 25
+SILENCE_BLOCKS = 15
 PRE_SPEECH_BUFFER_BLOCKS = 10
 CALIBRATION_SECONDS = 2.0
-MAX_UTTERANCE_SECONDS = 5.0
+MAX_UTTERANCE_SECONDS = 3.0
 
 
 def _rms(block: np.ndarray) -> float:
@@ -62,9 +62,7 @@ class Transcriber:
         self._calibrated = False
         self._threshold = DEFAULT_SILENCE_THRESHOLD
         self._calibration_samples: list[float] = []
-        self._calibration_blocks = int(
-            SAMPLE_RATE * CALIBRATION_SECONDS / BLOCK_SIZE
-        )
+        self._calibration_blocks = int(SAMPLE_RATE * CALIBRATION_SECONDS / BLOCK_SIZE)
 
         self._utterance_start: float = 0.0
 
@@ -188,7 +186,15 @@ class Transcriber:
 
     @staticmethod
     def _is_noise_only(text: str) -> bool:
-        text = text.strip().replace(".", "").replace("?", "").replace("!", "").replace(",", "").replace(" ", "").replace("\u2026", "")
+        text = (
+            text.strip()
+            .replace(".", "")
+            .replace("?", "")
+            .replace("!", "")
+            .replace(",", "")
+            .replace(" ", "")
+            .replace("\u2026", "")
+        )
         return len(text) == 0
 
     def _end_utterance(self) -> None:
